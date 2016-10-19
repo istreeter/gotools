@@ -1,0 +1,8 @@
+version: '2'
+
+services:
+  gotools_build:
+    image: golang
+    volumes:
+      - $PWD:/go/src/github.com/istreeter/gotools
+    command: go install github.com/istreeter/gotools/synchttp
