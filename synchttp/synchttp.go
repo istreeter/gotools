@@ -47,13 +47,14 @@ func (handlers Handlers) ServeHTTP (w http.ResponseWriter, req *http.Request) {
   }
 }
 
+type CtxDoneHandler struct {
+  H http.Handler
+}
 
-type TimeoutHandler string
-
-func (t TimeoutHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (t CtxDoneHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
   if ch := req.Context().Done(); ch != nil {
     <- ch
-    http.Error(w, string(t), http.StatusServiceUnavailable)
+    t.H.ServeHTTP(w, req)
   }
 }
 
@@ -71,20 +72,20 @@ func (t *TimedContextHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 
 type RecoveryHandler struct {
   H http.Handler
-  Msg string
+  RecoverH http.Handler
 }
 func (t *RecoveryHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
   defer func () {
     if r := recover(); r != nil {
-      http.Error(w, t.Msg, http.StatusInternalServerError)
+      t.RecoverH.ServeHTTP(w, req)
     }
   }()
   t.H.ServeHTTP(w, req)
 }
 
-func HandleWithMsgs(h http.Handler, errMsg string, timeoutMsg TimeoutHandler, dt time.Duration) http.Handler {
+func HandleWithMsgs(h http.Handler, errH http.Handler, ctxDoneH CtxDoneHandler, dt time.Duration) http.Handler {
   return &TimedContextHandler{
-    H: Handlers{&RecoveryHandler{H: h, Msg: errMsg}, timeoutMsg},
+    H: Handlers{&RecoveryHandler{H: h, RecoverH: errH}, ctxDoneH},
     Dt: dt,
   }
 }
