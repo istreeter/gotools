@@ -4,22 +4,20 @@ import (
     "log"
     "net/http"
     "time"
-    "errors"
+    //"errors"
     "github.com/istreeter/gotools/jsonhttp"
 )
 
-type myHandler struct{
-  Msg string `json:"msg"`
-}
+type myHandler struct{}
 
 func (h *myHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-  panic(errors.New("panic"))
-  jsonhttp.OK(w, h)
+  //panic(errors.New("panic"))
+  jsonhttp.OK(w, map[string]interface{}{"message": "hello"})
 }
 
 func main() {
 
-  handler := &myHandler{Msg: "hello"}
+  handler := &myHandler{}
 
   wrappedHandler := jsonhttp.HandleWithMsgs(handler, 2 * time.Second)
 
