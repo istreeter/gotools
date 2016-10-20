@@ -83,7 +83,7 @@ func (t *RecoveryHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
   t.H.ServeHTTP(w, req)
 }
 
-func HandleWithMsgs(h http.Handler, errH http.Handler, ctxDoneH CtxDoneHandler, dt time.Duration) http.Handler {
+func HandleWithMsgs(h http.Handler, errH http.Handler, ctxDoneH *CtxDoneHandler, dt time.Duration) http.Handler {
   return &TimedContextHandler{
     H: Handlers{&RecoveryHandler{H: h, RecoverH: errH}, ctxDoneH},
     Dt: dt,

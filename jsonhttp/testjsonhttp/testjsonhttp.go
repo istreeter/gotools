@@ -5,7 +5,6 @@ import (
     "net/http"
     "time"
     "errors"
-    "github.com/istreeter/gotools/synchttp"
     "github.com/istreeter/gotools/jsonhttp"
 )
 
@@ -21,9 +20,8 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func main() {
 
   handler := &myHandler{Msg: "hello"}
-  t := synchttp.CtxDoneHandler{H: jsonhttp.NewErrorHandler("this is a timeout", http.StatusServiceUnavailable)}
-  s := jsonhttp.NewErrorHandler("this is a server error", http.StatusInternalServerError)
-  wrappedHandler := synchttp.HandleWithMsgs(handler, s, t, 2 * time.Second)
+
+  wrappedHandler := jsonhttp.HandleWithMsgs(handler, 2 * time.Second)
 
   srv := &http.Server{
     Handler: wrappedHandler,

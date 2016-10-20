@@ -28,7 +28,7 @@ func (h ctxDoneHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func main() {
 
   handler := myHandler{}
-  t := synchttp.CtxDoneHandler{H: ctxDoneHandler("this is a timeout")}
+  t := &synchttp.CtxDoneHandler{H: ctxDoneHandler("this is a timeout")}
   s := serverErrorHandler("this is a server error")
   wrappedHandler := synchttp.HandleWithMsgs(handler, s, t, 2 * time.Second)
 

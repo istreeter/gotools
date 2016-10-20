@@ -3,7 +3,12 @@ package jsonhttp
 import (
   "encoding/json"
   "net/http"
+  "github.com/istreeter/gotools/synchttp"
+  "time"
 )
+
+var DefaultCtxDoneHandler = &synchttp.CtxDoneHandler{H: NewErrorHandler("Server Timeout", http.StatusServiceUnavailable)}
+var DefaultErrorHandler = NewErrorHandler("Server Error", http.StatusInternalServerError)
 
 type ErrorHandler struct{
   Content string
@@ -42,4 +47,8 @@ func write(w http.ResponseWriter, content interface{}, code int) {
 
 func OK(w http.ResponseWriter, content interface{}) {
   write(w, content, http.StatusOK)
+}
+
+func HandleWithMsgs(h http.Handler, dt time.Duration) http.Handler {
+  return synchttp.HandleWithMsgs(h, DefaultErrorHandler, DefaultCtxDoneHandler, dt)
 }
