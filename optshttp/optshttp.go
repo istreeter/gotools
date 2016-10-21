@@ -2,96 +2,88 @@ package optshttp
 
 import (
   "net/http"
-  "context"
   "time"
   //"github.com/gorilla/mux"
   "fmt"
   "strconv"
+  "reflect"
+  "unsafe"
 )
-
-const (
-  String = 1
-  Int = 2
-  RFC3339Nano = 3
-
-  ErrorKey = "optshttp-error"
-)
-
-var typeOf map[int]string = map[int]string{
-  String: "string",
-  Int: "integer",
-  RFC3339Nano: "date in RFC3339Nano format",
-}
 
 type optsError struct{
-  optType int
+  optType string
   optKey string
   optVal string
 }
 
 func (e *optsError) Error() string {
-  return fmt.Sprintf("Invalid %s %s: %s", typeOf[e.optType], e.optKey, e.optVal)
+  return fmt.Sprintf("Invalid %s %s: %s", e.optType, e.optKey, e.optVal)
 }
 
-type FormHandler struct{
-  H http.Handler
-  Types map[string]int
-}
-
-type GorillaHandler struct{
-  H http.Handler
-  Types map[string]int
-}
-
-func (h *FormHandler) ServeHTTP (w http.ResponseWriter, req *http.Request) {
-  ctx := req.Context()
-  for key, valType := range h.Types {
-    var ok bool
-    ctx, ok = parseVar(ctx, key, req.FormValue(key), valType)
-    if !ok {
-      break
+func UnmarshalForm(req *http.Request, v interface{}) error {
+  vv := reflect.ValueOf(v).Elem()
+  vt := vv.Type()
+  numField := vt.NumField()
+  for i := 0; i < numField; i++ {
+    field := vt.Field(i)
+    if formKey, ok := field.Tag.Lookup("form"); ok {
+      formStr := req.FormValue(formKey)
+      if (len(formStr) == 0) {
+        continue
+      }
+      if err := setValue(vv.Field(i), formKey, formStr); err != nil {
+        return err
+      }
     }
   }
-  req = req.WithContext(ctx)
-  h.H.ServeHTTP(w, req)
+  return nil
 }
 
-//func (h *GorillaHandler) ServeHTTP (w http.ResponseWriter, req *http.Request) {
-//  ctx := req.Context()
-//  vars := mux.Vars(req)
-//  for key, valType := range h.Type {
-//    var ok bool
-//    ctx, ok = parseVar(ctx, key, vars[key], valType)
-//    if !ok {
-//      break
-//    }
-//  }
-//  req = req.WithContext(ctx)
-//  h.ServeHTTP(w, req)
-//}
+var pStrType = reflect.TypeOf((*string)(nil))
+var pIntType = reflect.TypeOf((*int)(nil))
+var timeType = reflect.TypeOf(time.Time{})
+var pTimeType = reflect.PtrTo(timeType)
 
-func parseVar(ctx context.Context, key string, valStr string, valType int) (context.Context, bool) {
-    ok := true
-    if len(valStr) == 0 {
-      return ctx, ok
-    }
-    switch valType {
-      case String:
-        ctx = context.WithValue(ctx, key, valStr)
-      case Int:
-         if val, err := strconv.Atoi(valStr); err != nil{
-           ctx = context.WithValue(ctx, ErrorKey, &optsError{Int, key, valStr})
-           ok = false
-         } else {
-           ctx = context.WithValue(ctx, key, val)
-         }
-      case RFC3339Nano:
-         if val, err := time.Parse(time.RFC3339Nano, valStr); err != nil{
-           ctx = context.WithValue(ctx, ErrorKey, &optsError{RFC3339Nano, key, valStr})
-           ok = false
-         } else {
-           ctx = context.WithValue(ctx, key, val)
-         }
-       }
-     return ctx, ok
+func setValue(v reflect.Value, formKey string, formStr string) error {
+  switch v.Kind() {
+    case reflect.String:
+      v.SetString(formStr)
+    case reflect.Int:
+      if val, err := strconv.ParseInt(formStr, 10, 0); err != nil{
+        return &optsError{"integer", formKey, formStr}     
+      } else {
+        v.SetInt(val)
+      }
+    case reflect.Struct:
+      if v.Type() == timeType {
+        t := (*time.Time)(unsafe.Pointer(v.UnsafeAddr()))
+        if err := t.UnmarshalText([]byte(formStr)); err != nil {
+          return &optsError{"time in RFC3339 format", formKey, formStr}     
+        }
+      }
+    case reflect.Ptr:
+      if ! v.IsNil() {
+        return setValue(v.Elem(), formKey, formStr)
+      }
+      switch v.Type() {
+        case pStrType:
+          p := (**string)(unsafe.Pointer(v.UnsafeAddr()))
+          *p = &formStr
+        case pIntType:
+          if val, err := strconv.Atoi(formStr); err != nil{
+            return &optsError{"integer", formKey, formStr}     
+          } else {
+            p := (**int)(unsafe.Pointer(v.UnsafeAddr()))
+            *p = &val
+          }
+        case pTimeType:
+          if val, err := time.Parse(time.RFC3339Nano, formStr); err != nil{
+            return &optsError{"time in RFC3339 format", formKey, formStr}     
+          } else {
+            p := (**time.Time)(unsafe.Pointer(v.UnsafeAddr()))
+            *p = &val
+          }
+      }
+  }
+  return nil
 }

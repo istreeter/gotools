@@ -11,40 +11,39 @@ import (
 type myHandler struct{}
 
 func (h myHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-  if err, ok := req.Context().Value(optshttp.ErrorKey).(error); ok {
+  myForm := form{}
+  if err := optshttp.UnmarshalForm(req, &myForm); err != nil {
     w.Write([]byte(err.Error()))
-    return
   }
-  if myText, ok := req.Context().Value("myText").(string); ok {
-    w.Write([]byte(fmt.Sprintf("myText %q", myText)))
-    return
+  w.Write([]byte(fmt.Sprintf("Text is: %s\n", myForm.Text)))
+  w.Write([]byte(fmt.Sprintf("2* Num is: %d\n", 2*myForm.Num)))
+  w.Write([]byte(fmt.Sprintf("Date is: %v\n", myForm.Date)))
+  if myForm.PText != nil {
+    w.Write([]byte(fmt.Sprintf("PText is %s\n", *myForm.PText)))
   }
-  if myInt, ok := req.Context().Value("myInt").(int); ok {
-    w.Write([]byte(fmt.Sprintf("myInt * 100 = %d", myInt * 100)))
-    return
+  if myForm.PNum != nil {
+    w.Write([]byte(fmt.Sprintf("PNum is %d\n", 2* *myForm.PNum)))
   }
-  if myDate, ok := req.Context().Value("myDate").(time.Time); ok {
-    w.Write([]byte(fmt.Sprintf("date %v", myDate)))
-    return
+  if myForm.PDate != nil {
+    w.Write([]byte(fmt.Sprintf("PDate is %v\n", *myForm.PDate)))
   }
-  w.Write([]byte("hello"))
+}
+
+type form struct{
+  Text string `form:"text"`
+  Num int `form:"num"`
+  Date time.Time `form:"date"`
+  PText *string `form:"ptext"`
+  PNum *int `form:"pint"`
+  PDate *time.Time `form:"pdate"`
 }
 
 func main() {
 
-  myTypes := make(map[string]int)
-  myTypes["myText"] = optshttp.String
-  myTypes["myInt"] = optshttp.Int
-  myTypes["myDate"] = optshttp.RFC3339Nano
-
   handler := myHandler{}
-  formHandler := &optshttp.FormHandler{
-    H: handler,
-    Types: myTypes,
-  }
 
   srv := &http.Server{
-    Handler: formHandler,
+    Handler: handler,
     Addr: ":8000",
   }
 
