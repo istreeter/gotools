@@ -3,7 +3,7 @@ package optshttp
 import (
   "net/http"
   "time"
-  //"github.com/gorilla/mux"
+  "github.com/gorilla/mux"
   "fmt"
   "strconv"
   "reflect"
@@ -21,13 +21,22 @@ func (e *optsError) Error() string {
 }
 
 func UnmarshalForm(req *http.Request, v interface{}) error {
+  return unmarshal(v, func(s string) string {return req.FormValue(s)})
+}
+
+func UnmarshalPath(req *http.Request, v interface{}) error {
+  vars := mux.Vars(req)
+  return unmarshal(v, func(s string) string {return vars[s]})
+}
+
+func unmarshal(v interface{}, varLookup func(string) string) error {
   vv := reflect.ValueOf(v).Elem()
   vt := vv.Type()
   numField := vt.NumField()
   for i := 0; i < numField; i++ {
     field := vt.Field(i)
     if formKey, ok := field.Tag.Lookup("form"); ok {
-      formStr := req.FormValue(formKey)
+      formStr := varLookup(formKey)
       if (len(formStr) == 0) {
         continue
       }
