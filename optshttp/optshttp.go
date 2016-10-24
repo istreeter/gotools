@@ -69,6 +69,7 @@ func unmarshalStruct(v reflect.Value, tagKey string, varLookup func(string) stri
 
 var pStrType = reflect.TypeOf((*string)(nil))
 var pIntType = reflect.TypeOf((*int)(nil))
+var pUintType = reflect.TypeOf((*uint)(nil))
 var timeType = reflect.TypeOf(time.Time{})
 var pTimeType = reflect.PtrTo(timeType)
 
@@ -81,6 +82,12 @@ func setValue(v reflect.Value, formKey string, formStr string) error {
         return &optsError{"integer", formKey, formStr}     
       } else {
         v.SetInt(val)
+      }
+    case reflect.Uint:
+      if val, err := strconv.ParseUint(formStr, 10, 0); err != nil{
+        return &optsError{"unsigned integer", formKey, formStr}     
+      } else {
+        v.SetUint(val)
       }
     case reflect.Struct:
       if v.Type() == timeType {
@@ -102,6 +109,13 @@ func setValue(v reflect.Value, formKey string, formStr string) error {
             return &optsError{"integer", formKey, formStr}     
           } else {
             p := (**int)(unsafe.Pointer(v.UnsafeAddr()))
+            *p = &val
+          }
+        case pUintType:
+          if val, err := strconv.ParseUint(formStr, 10, 0); err != nil{
+            return &optsError{"unsigned integer", formKey, formStr}     
+          } else {
+            p := (**uint64)(unsafe.Pointer(v.UnsafeAddr()))
             *p = &val
           }
         case pTimeType:

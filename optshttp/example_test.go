@@ -15,9 +15,9 @@ func ExampleUnmarshalForm() {
     Str   string     `form:"str_a"`
     PStr  *string    `form:"str_b"`
     Embedded struct {
-      Int   int      `form:"int_a"`
+      Int   uint      `form:"int_a"`
     }                `form:",inline"`
-    PInt  *int       `form:"int_b"`
+    PInt  *uint       `form:"int_b"`
     Date  time.Time  `form:"date_a"`
     PDate *time.Time `form:"date_b"`
   }
