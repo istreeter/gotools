@@ -14,7 +14,9 @@ func ExampleUnmarshalForm() {
   type tParams struct {
     Str   string     `form:"str_a"`
     PStr  *string    `form:"str_b"`
-    Int   int        `form:"int_a"`
+    Embedded struct {
+      Int   int      `form:"int_a"`
+    }                `form:",inline"`
     PInt  *int       `form:"int_b"`
     Date  time.Time  `form:"date_a"`
     PDate *time.Time `form:"date_b"`
@@ -30,7 +32,7 @@ func ExampleUnmarshalForm() {
 
   fmt.Println("Str is:", params.Str)
   fmt.Println("PStr is:", *params.PStr)
-  fmt.Println("Int is:", params.Int)
+  fmt.Println("Int is:", params.Embedded.Int)
   fmt.Println("PInt is:", *params.PInt)
   fmt.Println("Date is:", params.Date)
   fmt.Println("PDate is:", *params.PDate)

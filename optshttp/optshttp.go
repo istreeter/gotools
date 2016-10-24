@@ -8,15 +8,22 @@ import (
   "strconv"
   "reflect"
   "unsafe"
+  "strings"
+)
+
+const(
+  flagForm = "form"
+  flagPath = "path"
+  flagInline = "inline"
 )
 
 func UnmarshalForm(req *http.Request, v interface{}) error {
-  return unmarshal(v, "form", func(s string) string {return req.FormValue(s)})
+  return unmarshalStruct(reflect.ValueOf(v).Elem(), flagForm, func(s string) string {return req.FormValue(s)})
 }
 
 func UnmarshalPath(req *http.Request, v interface{}) error {
   vars := mux.Vars(req)
-  return unmarshal(v, "path", func(s string) string {return vars[s]})
+  return unmarshalStruct(reflect.ValueOf(v).Elem(), flagPath, func(s string) string {return vars[s]})
 }
 
 type optsError struct{
@@ -29,19 +36,31 @@ func (e *optsError) Error() string {
   return fmt.Sprintf("Invalid %s %s: %s", e.optType, e.optKey, e.optVal)
 }
 
-func unmarshal(v interface{}, tagKey string, varLookup func(string) string) error {
-  vv := reflect.ValueOf(v).Elem()
-  vt := vv.Type()
+func unmarshalStruct(v reflect.Value, tagKey string, varLookup func(string) string) error {
+  vt := v.Type()
   numField := vt.NumField()
   for i := 0; i < numField; i++ {
     field := vt.Field(i)
-    if formKey, ok := field.Tag.Lookup(tagKey); ok {
-      formStr := varLookup(formKey)
-      if (len(formStr) == 0) {
+    if tagStr, ok := field.Tag.Lookup(tagKey); ok {
+      if (len(tagStr) == 0) {
         continue
       }
-      if err := setValue(vv.Field(i), formKey, formStr); err != nil {
-        return err
+      tagFields := strings.Split(tagStr, ",")
+      if len(tagFields) > 1 {
+        for _, flag := range tagFields[1:] {
+          switch flag {
+            case flagInline:
+              if err := unmarshalStruct(v.Field(i), tagKey, varLookup); err != nil {
+                return err
+              }
+          }
+        }
+      }
+      if len(tagFields) > 0 && len(tagFields[0]) > 0 {
+        formStr := varLookup(tagFields[0])
+        if err := setValue(v.Field(i), tagFields[0], formStr); err != nil {
+          return err
+        }
       }
     }
   }
