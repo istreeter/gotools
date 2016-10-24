@@ -66,7 +66,7 @@ func ExampleTimedContextHandler() {
   // Second response: 200 - Finished sleeping
 }
 
-func Example_HandleWithMsgs() {
+func ExampleHandleWithMsgs() {
 
   mainHandler := http.HandlerFunc(
     func(w http.ResponseWriter, r *http.Request) {
