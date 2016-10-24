@@ -58,7 +58,7 @@ func unmarshalStruct(v reflect.Value, tagKey string, varLookup func(string) stri
       }
       if len(tagFields) > 0 && len(tagFields[0]) > 0 {
         if formStr := varLookup(tagFields[0]); len(formStr) > 0 {
-          if err := setValue(v.Field(i), tagFields[0], tagFields[0]); err != nil {
+          if err := setValue(v.Field(i), tagFields[0], formStr); err != nil {
             return err
           }
         }
