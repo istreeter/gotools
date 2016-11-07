@@ -29,6 +29,10 @@ type BlogPageStasher interface {
   StashPageEtags(ctx context.Context, blogId string, listEtag string, pageEtags map[string]string, updated *time.Time)
 }
 
+type BlogStasher interface {
+  StashBlog(context.Context, *blogger.Blog)
+}
+
 type MgoBlogStasher struct {
   BlogPageCollection *mgo.Collection
   BlogPostCollection *mgo.Collection
@@ -50,6 +54,7 @@ type MgoBlogPage struct {
 type MgoBlog struct {
   Id *bson.ObjectId `bson:"_id,omitempty"`
   Blog *blogger.Blog `bson:"omitempty"`
+  Updated *time.Time `bson:"omitempty"`
   PostListEtag *string `bson:"omitempty"`
   PostListUpdated *time.Time `bson:"omitempty"`
   PageListEtag *string `bson:"omitempty"`
@@ -72,6 +77,9 @@ type blogPostGetter interface {
 type blogPageGetter interface {
   blogPageEtags(blogId string, oldListEtag *string) (newListEtag string, newPageEtags map[string]string)
   blogPage(blogId string, pageId string) *blogger.Page
+}
+type blogGetter interface {
+  blog(blogId string) *blogger.Blog
 }
 
 type blogService blogger.Service;
@@ -130,6 +138,17 @@ func(b *blogService) blogPage(blogId string, pageId string) *blogger.Page {
   return page
 }
 
+func(b *blogService) blog(blogId string) *blogger.Blog {
+  s := (*blogger.Service)(b)
+  blog, err := s.Blogs.Get(blogId).Do()
+  if err != nil { panic(err) }
+  return blog
+}
+
+func syncBlog(ctx context.Context, blogId string, stasher BlogStasher, getter blogGetter) {
+  newBlog := getter.blog(blogId)
+  stasher.StashBlog(ctx, newBlog)
+}
 
 func syncBlogPosts(ctx context.Context, blogId string, stasher BlogPostStasher, getter blogPostGetter) {
   oldListEtag := stasher.GetPostListEtag(ctx, blogId)
@@ -246,5 +265,16 @@ func(m *MgoBlogStasher) StashPostEtags(ctx context.Context, blogId string, listE
   }
 
   _, err := m.BlogCollection.Upsert(bson.M{"blog.id": blogId, "postListUpdated": bson.M{"$lt": newUpdated}}, bson.M{"$set": &MgoBlog{PostListEtag: &listEtag, PostListUpdated: newUpdated}})
+  if (err != nil) { panic(err) }
+}
+
+func(m *MgoBlogStasher) StashBlog(ctx context.Context, blog *blogger.Blog) {
+  dbBlog := MgoBlog{
+    Blog: blog,
+  }
+  var err error
+  *dbBlog.Updated, err = time.Parse(blog.Updated, time.RFC3339)
+  if err != nil { panic(err) }
+  _, err = m.BlogCollection.Upsert(bson.M{"blog.id": blog.Id, "updated": bson.M{"$lt": dbBlog.Updated}}, bson.M{"$set": &dbBlog})
   if (err != nil) { panic(err) }
 }
