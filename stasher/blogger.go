@@ -154,20 +154,17 @@ func(b *blogService) blog(blogId string) *blogger.Blog {
   return blog
 }
 
-func SyncBloggerWithDefaultClient(ctx context.Context, blogId string, stasher BloggerStasher) error{
-  client, err := google.DefaultClient(ctx, blogger.BloggerReadonlyScope)
-  if err != nil { return err }
-  return syncBloggerWithClient(ctx, blogId, stasher, client)
+func DefaultSyncBloggerClient (ctx context.Context) (*http.Client, error) {
+  return google.DefaultClient(ctx, blogger.BloggerReadonlyScope)
 }
 
-func SyncBloggerWithCredentials(ctx context.Context, blogId string, stasher BloggerStasher, credentials []byte) error{
+func SyncBloggerClient(ctx context.Context, credentials []byte) (*http.Client, error) {
   jwtConf, err := google.JWTConfigFromJSON(credentials, blogger.BloggerReadonlyScope)
-  if err != nil { return err }
-  client := jwtConf.Client(ctx)
-  return syncBloggerWithClient(ctx, blogId, stasher, client)
+  if err != nil { return nil, err }
+  return jwtConf.Client(ctx), nil
 }
 
-func syncBloggerWithClient(ctx context.Context, blogId string, stasher BloggerStasher, client *http.Client) (err error) {
+func SyncBlogger(ctx context.Context, blogId string, stasher BloggerStasher, client *http.Client) (err error) {
 
   defer func() {
     if r := recover(); r != nil {
