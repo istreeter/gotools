@@ -3,6 +3,8 @@ package stasher
 import (
   "context"
   "time"
+  "net/http"
+  "fmt"
   "google.golang.org/api/blogger/v3"
   "google.golang.org/api/googleapi"
   "gopkg.in/mgo.v2"
@@ -14,6 +16,12 @@ const (
   DefaultBlogPostCollection = "blog_post"
   DefaultBlogCollection = "blog"
 )
+
+type BloggerStasher interface {
+  BlogPostStasher
+  BlogPageStasher
+  BlogStasher
+}
 
 type BlogPostStasher interface {
   GetPostListEtag(ctx context.Context, blogId string) (etag *string)
@@ -143,6 +151,30 @@ func(b *blogService) blog(blogId string) *blogger.Blog {
   blog, err := s.Blogs.Get(blogId).Do()
   if err != nil { panic(err) }
   return blog
+}
+
+func SyncBlogger(ctx context.Context, blogId string, stasher BloggerStasher, client *http.Client) (err error) {
+
+  defer func() {
+    if r := recover(); r != nil {
+      var ok bool
+      err, ok = r.(error)
+      if !ok {
+        err = fmt.Errorf("pkg: %v", r)
+      }
+    }
+  }()
+
+  var b *blogService
+  if bService, err := blogger.New(client); err != nil {
+    return err
+  } else {
+    b = (*blogService)(bService)
+  }
+  syncBlog(ctx, blogId, stasher, b)
+  syncBlogPosts(ctx, blogId, stasher, b)
+  syncBlogPages(ctx, blogId, stasher, b)
+  return nil
 }
 
 func syncBlog(ctx context.Context, blogId string, stasher BlogStasher, getter blogGetter) {
