@@ -153,8 +153,8 @@ func syncBlog(ctx context.Context, blogId string, stasher BlogStasher, getter bl
 func syncBlogPosts(ctx context.Context, blogId string, stasher BlogPostStasher, getter blogPostGetter) {
   oldListEtag := stasher.GetPostListEtag(ctx, blogId)
   newListEtag, newPostEtags := getter.blogPostEtags(blogId, oldListEtag)
-  newUpdated := time.Now()
   if newListEtag == "" { return }
+  newUpdated := time.Now()
   for id, etag := range newPostEtags {
     if stasher.HasPost(ctx, id, etag) {continue}
     post := getter.blogPost(blogId, id)
@@ -166,8 +166,8 @@ func syncBlogPosts(ctx context.Context, blogId string, stasher BlogPostStasher, 
 func syncBlogPages(ctx context.Context, blogId string, stasher BlogPageStasher, getter blogPageGetter) {
   oldListEtag := stasher.GetPageListEtag(ctx, blogId)
   newListEtag, newPageEtags := getter.blogPageEtags(blogId, oldListEtag)
-  newUpdated := time.Now()
   if newListEtag == "" { return }
+  newUpdated := time.Now()
   for id, etag := range newPageEtags {
     if stasher.HasPage(ctx, id, etag) {continue}
     page := getter.blogPage(blogId, id)
@@ -193,14 +193,18 @@ func(m *MgoBlogStasher) HasPage(ctx context.Context, pageId string, etag string)
   if n > 0 { return true }
   return false
 }
-func(m *MgoBlogStasher) StashPage(ctx context.Context, page *blogger.Page) {
-  dbPage := MgoBlogPage{
+func mgoWrapBlogPage(page *blogger.Page) *MgoBlogPage {
+  dbPage := &MgoBlogPage{
     BlogPage: page,
   }
   pageUpdated, err := time.Parse(time.RFC3339, page.Updated)
   if err != nil { panic(err) }
   dbPage.Updated = &pageUpdated
-  _, err = m.BlogPageCollection.Upsert(bson.M{"blogPage.id": page.Id, "updated": bson.M{"$lt": dbPage.Updated}}, &dbPage);
+  return dbPage
+}
+func(m *MgoBlogStasher) StashPage(ctx context.Context, page *blogger.Page) {
+  dbPage := mgoWrapBlogPage(page)
+  _, err := m.BlogPageCollection.Upsert(bson.M{"blogPage.id": page.Id, "updated": bson.M{"$lt": dbPage.Updated}}, &dbPage);
   if err != nil { panic(err) }
 }
 func(m *MgoBlogStasher) StashPageEtags(ctx context.Context, blogId string, listEtag string, pageEtags map[string]string, newUpdated *time.Time) {

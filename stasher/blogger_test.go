@@ -20,6 +20,9 @@ type testBlogPostGetter struct {
 }
 
 func(g *testBlogPostGetter)  blogPostEtags(blogId string, oldListEtag *string) (string, map[string]string) {
+  if oldListEtag != nil && *oldListEtag == g.listEtag {
+    return "", nil
+  }
   newListEtag := g.listEtag
   newPostEtags := make(map[string]string)
   for postId, post := range g.posts {
@@ -30,6 +33,27 @@ func(g *testBlogPostGetter)  blogPostEtags(blogId string, oldListEtag *string) (
 
 func(g *testBlogPostGetter) blogPost(blogId string, postId string) *blogger.Post {
   return g.posts[postId]
+}
+
+type testBlogPageGetter struct {
+  listEtag string
+  pages map[string]*blogger.Page
+}
+
+func(g *testBlogPageGetter)  blogPageEtags(blogId string, oldListEtag *string) (string, map[string]string) {
+  if oldListEtag != nil && *oldListEtag == g.listEtag {
+    return "", nil
+  }
+  newListEtag := g.listEtag
+  newPageEtags := make(map[string]string)
+  for pageId, page := range g.pages {
+    newPageEtags[pageId] = page.Etag
+  }
+  return newListEtag, newPageEtags
+}
+
+func(g *testBlogPageGetter) blogPage(blogId string, pageId string) *blogger.Page {
+  return g.pages[pageId]
 }
 
 type testBlogStasher bson.M
@@ -66,6 +90,34 @@ func(s *testBlogPostStasher) StashPostEtags(ctx context.Context, blogId string, 
   for postId, post := range s.posts {
     if postEtags[postId] != post.BlogPost.Etag {
       delete(s.posts, postId)
+    }
+  }
+}
+
+type testBlogPageStasher struct {
+  listEtag string
+  updated *time.Time
+  pages map[string]*MgoBlogPage
+}
+func(s *testBlogPageStasher) GetPageListEtag(ctx context.Context, blogId string) *string {
+  if s.listEtag == "" { return nil }
+  return &s.listEtag
+}
+func(s *testBlogPageStasher) HasPage(ctx context.Context, pageId string, etag string) bool {
+  page, ok := s.pages[pageId]
+  if !ok { return false }
+  if page.BlogPage.Etag != etag { return false }
+  return true
+}
+func(s *testBlogPageStasher) StashPage(ctx context.Context, page *blogger.Page) {
+  s.pages[page.Id] = mgoWrapBlogPage(page)
+}
+func(s *testBlogPageStasher) StashPageEtags(ctx context.Context, blogId string, listEtag string, pageEtags map[string]string, updated *time.Time) {
+  s.listEtag = listEtag
+  s.updated = updated
+  for pageId, page := range s.pages {
+    if pageEtags[pageId] != page.BlogPage.Etag {
+      delete(s.pages, pageId)
     }
   }
 }
@@ -124,9 +176,60 @@ func TestSyncBlogPosts(t *testing.T) {
   getter.posts = make(map[string]*blogger.Post)
   getter.listEtag = "NewListEtag"
 
-  p1 := &blogger.Post{Id: "10", Updated: "2016-11-08T06:10:34Z", Etag: "TAG1"}
+  p1 := &blogger.Post{Id: "1", Updated: "2016-11-08T06:10:34Z", Etag: "TAG1"}
   stasher.posts[p1.Id] = mgoWrapBlogPost(p1)
   getter.posts[p1.Id] = p1
 
+  p2 := &blogger.Post{Id: "2", Updated: "2016-11-09T06:10:34Z", Etag: "TAG2"}
+  getter.posts[p2.Id] = p2
+
   syncBlogPosts(nil, "10", stasher, getter)
+  if l := len(stasher.posts); l != 2 {
+      t.Errorf("number of posts: expected 2, got %v", l)
+  }
+  stasher.listEtag = "OldListEtag"
+
+  p3 := &blogger.Post{Id: "3", Updated: "2016-11-10T06:10:34Z", Etag: "TAG3"}
+  stasher.posts[p3.Id] = mgoWrapBlogPost(p3)
+  syncBlogPosts(nil, "10", stasher, getter)
+  if l := len(stasher.posts); l != 2 {
+      t.Errorf("number of posts: expected 2, got %v", l)
+  }
+}
+
+func TestSyncBlogPages(t *testing.T) {
+  defer func() {
+    if err := recover(); err != nil {
+      t.Fatal(err)
+    }
+  }()
+
+  stasher := &testBlogPageStasher{}
+  stasher.pages = make(map[string]*MgoBlogPage)
+  stasher.listEtag = "OldListEtag"
+  now := time.Now()
+  stasher.updated = &now
+  getter := &testBlogPageGetter{}
+  getter.pages = make(map[string]*blogger.Page)
+  getter.listEtag = "NewListEtag"
+
+  p1 := &blogger.Page{Id: "1", Updated: "2016-11-08T06:10:34Z", Etag: "TAG1"}
+  stasher.pages[p1.Id] = mgoWrapBlogPage(p1)
+  getter.pages[p1.Id] = p1
+
+  p2 := &blogger.Page{Id: "2", Updated: "2016-11-09T06:10:34Z", Etag: "TAG2"}
+  getter.pages[p2.Id] = p2
+
+  syncBlogPages(nil, "10", stasher, getter)
+  if l := len(stasher.pages); l != 2 {
+      t.Errorf("number of pages: expected 2, got %v", l)
+  }
+  stasher.listEtag = "OldListEtag"
+
+  p3 := &blogger.Page{Id: "3", Updated: "2016-11-10T06:10:34Z", Etag: "TAG3"}
+  stasher.pages[p3.Id] = mgoWrapBlogPage(p3)
+  syncBlogPages(nil, "10", stasher, getter)
+  if l := len(stasher.pages); l != 2 {
+      t.Errorf("number of pages: expected 2, got %v", l)
+  }
 }
