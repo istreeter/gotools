@@ -197,9 +197,9 @@ func(m *MgoBlogStasher) StashPage(ctx context.Context, page *blogger.Page) {
   dbPage := MgoBlogPage{
     BlogPage: page,
   }
-  var err error
-  *dbPage.Updated, err = time.Parse(page.Updated, time.RFC3339)
+  pageUpdated, err := time.Parse(time.RFC3339, page.Updated)
   if err != nil { panic(err) }
+  dbPage.Updated = &pageUpdated
   _, err = m.BlogPageCollection.Upsert(bson.M{"blogPage.id": page.Id, "updated": bson.M{"$lt": dbPage.Updated}}, &dbPage);
   if err != nil { panic(err) }
 }
@@ -239,14 +239,19 @@ func(m *MgoBlogStasher) HasPost(ctx context.Context, postId string, etag string)
   if n > 0 { return true }
   return false
 }
-func(m *MgoBlogStasher) StashPost(ctx context.Context, post *blogger.Post) {
-  dbPost := MgoBlogPost{
+
+func mgoWrapBlogPost(post *blogger.Post) *MgoBlogPost {
+  dbPost := &MgoBlogPost{
     BlogPost: post,
   }
-  var err error
-  *dbPost.Updated, err = time.Parse(post.Updated, time.RFC3339)
+  postUpdated, err := time.Parse(time.RFC3339, post.Updated)
   if err != nil { panic(err) }
-  _, err = m.BlogPostCollection.Upsert(bson.M{"blogPost.id": post.Id, "updated": bson.M{"$lt": dbPost.Updated}}, &dbPost);
+  dbPost.Updated = &postUpdated
+  return dbPost
+}
+func(m *MgoBlogStasher) StashPost(ctx context.Context, post *blogger.Post) {
+  dbPost := mgoWrapBlogPost(post)
+  _, err := m.BlogPostCollection.Upsert(bson.M{"blogPost.id": post.Id, "updated": bson.M{"$lt": dbPost.Updated}}, dbPost);
   if err != nil { panic(err) }
 }
 func(m *MgoBlogStasher) StashPostEtags(ctx context.Context, blogId string, listEtag string, postEtags map[string]string, newUpdated *time.Time) {
@@ -273,7 +278,7 @@ func(m *MgoBlogStasher) StashBlog(ctx context.Context, blog *blogger.Blog) {
     Blog: blog,
   }
   var err error
-  *dbBlog.Updated, err = time.Parse(blog.Updated, time.RFC3339)
+  *dbBlog.Updated, err = time.Parse(time.RFC3339, blog.Updated)
   if err != nil { panic(err) }
   _, err = m.BlogCollection.Upsert(bson.M{"blog.id": blog.Id, "updated": bson.M{"$lt": dbBlog.Updated}}, bson.M{"$set": &dbBlog})
   if (err != nil) { panic(err) }
