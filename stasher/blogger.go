@@ -53,12 +53,12 @@ type MgoBlogPage struct {
 
 type MgoBlog struct {
   Id *bson.ObjectId `bson:"_id,omitempty"`
-  Blog *blogger.Blog `bson:"omitempty"`
-  Updated *time.Time `bson:"omitempty"`
-  PostListEtag *string `bson:"omitempty"`
-  PostListUpdated *time.Time `bson:"omitempty"`
-  PageListEtag *string `bson:"omitempty"`
-  PageListUpdated *time.Time `bson:"omitempty"`
+  Blog *blogger.Blog `bson:",omitempty"`
+  Updated *time.Time `bson:",omitempty"`
+  PostListEtag *string `bson:",omitempty"`
+  PostListUpdated *time.Time `bson:",omitempty"`
+  PageListEtag *string `bson:",omitempty"`
+  PageListUpdated *time.Time `bson:",omitempty"`
 }
 
 func DefaultMgoStasher(db *mgo.Database) (m *MgoBlogStasher) {

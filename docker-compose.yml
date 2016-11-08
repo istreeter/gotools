@@ -5,4 +5,5 @@ services:
     image: golang
     volumes:
       - $PWD:/go/src/github.com/istreeter/gotools
-    command: go install github.com/istreeter/gotools/synchttp
+      - $HOME/go:/go
+    command: go test github.com/istreeter/gotools/stasher
