@@ -154,11 +154,11 @@ func(b *blogService) blog(blogId string) *blogger.Blog {
   return blog
 }
 
-func DefaultSyncBloggerClient (ctx context.Context) (*http.Client, error) {
+func DefaultBloggerClient (ctx context.Context) (*http.Client, error) {
   return google.DefaultClient(ctx, blogger.BloggerReadonlyScope)
 }
 
-func SyncBloggerClient(ctx context.Context, credentials []byte) (*http.Client, error) {
+func BloggerClient(ctx context.Context, credentials []byte) (*http.Client, error) {
   jwtConf, err := google.JWTConfigFromJSON(credentials, blogger.BloggerReadonlyScope)
   if err != nil { return nil, err }
   return jwtConf.Client(ctx), nil
