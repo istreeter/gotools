@@ -7,6 +7,7 @@ import (
   "fmt"
   "google.golang.org/api/blogger/v3"
   "google.golang.org/api/googleapi"
+  "golang.org/x/oauth2/google"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
 )
@@ -153,7 +154,20 @@ func(b *blogService) blog(blogId string) *blogger.Blog {
   return blog
 }
 
-func SyncBlogger(ctx context.Context, blogId string, stasher BloggerStasher, client *http.Client) (err error) {
+func SyncBloggerWithDefaultClient(ctx context.Context, blogId string, stasher BloggerStasher) error{
+  client, err := google.DefaultClient(ctx, blogger.BloggerReadonlyScope)
+  if err != nil { return err }
+  return syncBloggerWithClient(ctx, blogId, stasher, client)
+}
+
+func SyncBloggerWithCredentials(ctx context.Context, blogId string, stasher BloggerStasher, credentials []byte) error{
+  jwtConf, err := google.JWTConfigFromJSON(credentials, blogger.BloggerReadonlyScope)
+  if err != nil { return err }
+  client := jwtConf.Client(ctx)
+  return syncBloggerWithClient(ctx, blogId, stasher, client)
+}
+
+func syncBloggerWithClient(ctx context.Context, blogId string, stasher BloggerStasher, client *http.Client) (err error) {
 
   defer func() {
     if r := recover(); r != nil {
