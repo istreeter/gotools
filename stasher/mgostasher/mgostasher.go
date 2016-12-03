@@ -4,6 +4,7 @@ import (
   "context"
   "time"
   "google.golang.org/api/blogger/v3"
+  "github.com/dghubble/go-twitter/twitter"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
 )
@@ -12,12 +13,19 @@ const (
   DefaultBlogPageCollection = "blog_page"
   DefaultBlogPostCollection = "blog_post"
   DefaultBlogCollection = "blog"
+  DefaultTweetCollection = "tweet"
+  DefaultTwitterUserCollection = "twitterer"
 )
 
 type BlogStasher struct {
   BlogPageCollection *mgo.Collection
   BlogPostCollection *mgo.Collection
   BlogCollection *mgo.Collection
+}
+
+type TwitterStasher struct {
+  TweetCollection *mgo.Collection
+  TwitterUserCollection *mgo.Collection
 }
 
 type BlogPost struct {
@@ -42,11 +50,29 @@ type Blog struct {
   PageListUpdated *time.Time `bson:",omitempty"`
 }
 
-func DefaultStasher(db *mgo.Database) (m *BlogStasher) {
+type Tweet struct {
+  Id *bson.ObjectId `bson:"_id,omitempty"`
+  Tweet *twitter.Tweet
+  OEmbed *twitter.OEmbedTweet
+}
+
+type TwitterUser struct {
+  Id *bson.ObjectId `bson:"_id,omitempty"`
+  TwitterUser *twitter.User
+}
+
+func DefaultBlogStasher(db *mgo.Database) (m *BlogStasher) {
   m = new(BlogStasher)
   m.BlogPageCollection = db.C(DefaultBlogPageCollection)
   m.BlogPostCollection = db.C(DefaultBlogPostCollection)
   m.BlogCollection = db.C(DefaultBlogCollection)
+  return
+}
+
+func DefaultTwitterStasher(db *mgo.Database) (m *TwitterStasher) {
+  m = new(TwitterStasher)
+  m.TweetCollection = db.C(DefaultTweetCollection)
+  m.TwitterUserCollection = db.C(DefaultTwitterUserCollection)
   return
 }
 
@@ -160,4 +186,28 @@ func(m *BlogStasher) StashBlog(ctx context.Context, blog *blogger.Blog) {
   if err != nil { panic(err) }
   _, err = m.BlogCollection.Upsert(bson.M{"blog.id": blog.Id, "updated": bson.M{"$lt": dbBlog.Updated}}, bson.M{"$set": &dbBlog})
   if (err != nil) { panic(err) }
+}
+
+func(m *TwitterStasher) GetLastTweetId(ctx context.Context, userId int64) int64 {
+  tweet := new(Tweet)
+  err := m.TweetCollection.Find(bson.M{"tweet.user.id": userId}).Select(bson.M{"tweet.Id": 1}).One(tweet)
+  if err != nil {
+    if err == mgo.ErrNotFound {
+      return 0
+    }
+    panic(err)
+  }
+  return tweet.Tweet.ID
+}
+
+func(m *TwitterStasher) StashUser(ctx context.Context, user *twitter.User) {
+  dbUser := &TwitterUser{TwitterUser: user}
+  _, err := m.TwitterUserCollection.Upsert(bson.M{"user.id": user.ID}, &dbUser);
+  if err != nil { panic(err) }
+}
+
+func(m *TwitterStasher) StashTweet(ctx context.Context, tweet *twitter.Tweet, oembed *twitter.OEmbedTweet) {
+  dbTweet := &Tweet{Tweet: tweet, OEmbed: oembed}
+  _, err := m.TweetCollection.Upsert(bson.M{"tweet.id": tweet.ID}, &dbTweet);
+  if err != nil { panic(err) }
 }
