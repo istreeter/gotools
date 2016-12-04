@@ -17,9 +17,9 @@ type TwitterStasher interface {
 }
 
 type twitterGetter interface {
-  user(int64) *twitter.User
-  userTimeline(*twitter.UserTimelineParams) []twitter.Tweet
-  oembed(*twitter.Tweet) *twitter.OEmbedTweet
+  user(context.Context, int64) *twitter.User
+  userTimeline(context.Context, *twitter.UserTimelineParams) []twitter.Tweet
+  oembed(context.Context, *twitter.Tweet) *twitter.OEmbedTweet
 }
 
 func SyncTwitter(ctx context.Context, userId int64, stasher TwitterStasher, accessToken string) (err error) {
@@ -44,7 +44,7 @@ func SyncTwitter(ctx context.Context, userId int64, stasher TwitterStasher, acce
 
 type twitterClient twitter.Client;
 
-func (client *twitterClient) user(userId int64) *twitter.User {
+func (client *twitterClient) user(ctx context.Context, userId int64) *twitter.User {
   c := (*twitter.Client)(client)
   var user *twitter.User
   var err error
@@ -54,7 +54,13 @@ func (client *twitterClient) user(userId int64) *twitter.User {
     if res != nil && res.StatusCode == 420 || res.StatusCode == 429 {
       log.Println("Rate limited by Twitter. Sleeping for 15 minutes...")
       time.Sleep(15 * time.Minute)
-      continue
+      after := time.After(15 * time.Minute)
+      select {
+        case <-after:
+          continue
+        case <-ctx.Done():
+          panic(ctx.Err())
+      }
     }
     break
   }
@@ -64,17 +70,22 @@ func (client *twitterClient) user(userId int64) *twitter.User {
   return user
 }
 
-func (client *twitterClient) userTimeline(p *twitter.UserTimelineParams) []twitter.Tweet {
+func (client *twitterClient) userTimeline(ctx context.Context, p *twitter.UserTimelineParams) []twitter.Tweet {
   c := (*twitter.Client)(client)
   var t []twitter.Tweet
   var err error
   for try := 0; try < 2; try++ {
     var res *http.Response
-    t, res, err = c.Timelines.UserTimeline(&twitter.UserTimelineParams{})
+    t, res, err = c.Timelines.UserTimeline(p)
     if res != nil && res.StatusCode == 420 || res.StatusCode == 429 {
       log.Println("Rate limited by Twitter. Sleeping for 15 minutes...")
-      time.Sleep(15 * time.Minute)
-      continue
+      after := time.After(15 * time.Minute)
+      select {
+        case <-after:
+          continue
+        case <-ctx.Done():
+          panic(ctx.Err())
+      }
     }
     break
   }
@@ -84,7 +95,7 @@ func (client *twitterClient) userTimeline(p *twitter.UserTimelineParams) []twitt
   return t
 }
 
-func (client *twitterClient) oembed(t *twitter.Tweet) *twitter.OEmbedTweet {
+func (client *twitterClient) oembed(ctx context.Context, t *twitter.Tweet) *twitter.OEmbedTweet {
   c := (*twitter.Client)(client)
   var o *twitter.OEmbedTweet
   var err error
@@ -99,8 +110,13 @@ func (client *twitterClient) oembed(t *twitter.Tweet) *twitter.OEmbedTweet {
     o, res, err = c.Statuses.OEmbed(p)
     if res != nil && res.StatusCode == 420 || res.StatusCode == 429 {
       log.Println("Rate limited by Twitter. Sleeping for 15 minutes...")
-      time.Sleep(15 * time.Minute)
-      continue
+      after := time.After(15 * time.Minute)
+      select {
+        case <-after:
+          continue
+        case <-ctx.Done():
+          panic(ctx.Err())
+      }
     }
     break
   }
@@ -111,7 +127,7 @@ func (client *twitterClient) oembed(t *twitter.Tweet) *twitter.OEmbedTweet {
 }
 
 func syncTwitter(ctx context.Context, userId int64, stasher TwitterStasher, getter twitterGetter) {
-  newUser := getter.user(userId)
+  newUser := getter.user(ctx, userId)
   stasher.StashUser(ctx, newUser)
   lastTweetId := stasher.GetLastTweetId(ctx, userId)
   params := &twitter.UserTimelineParams{
@@ -123,7 +139,7 @@ func syncTwitter(ctx context.Context, userId int64, stasher TwitterStasher, gett
     Count: 50,
   }
   for {
-    tweets := getter.userTimeline(params)
+    tweets := getter.userTimeline(ctx, params)
     if len(tweets) == 0 {
       break
     }
@@ -131,7 +147,7 @@ func syncTwitter(ctx context.Context, userId int64, stasher TwitterStasher, gett
       if tweet.RetweetedStatus != nil {
         continue
       }
-      oembed := getter.oembed(&tweet)
+      oembed := getter.oembed(ctx, &tweet)
       stasher.StashTweet(ctx, &tweet, oembed)
     }
     lastGotId := tweets[len(tweets)-1].ID
