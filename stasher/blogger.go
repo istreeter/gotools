@@ -106,7 +106,7 @@ func(b *blogService) blogPage(blogId string, pageId string) *blogger.Page {
 func(b *blogService) blog(blogId string) *blogger.Blog {
   s := (*blogger.Service)(b)
   blog, err := s.Blogs.Get(blogId).Do()
-  if err != nil { panic(err) }
+  if err != nil { panic(fmt.Sprintf("Error getting blog %v: %v", blogId, err.Error())) }
   return blog
 }
 

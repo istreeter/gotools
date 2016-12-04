@@ -30,35 +30,35 @@ type TwitterStasher struct {
 
 type BlogPost struct {
   Id *bson.ObjectId `bson:"_id,omitempty"`
-  BlogPost *blogger.Post
-  Updated *time.Time
+  BlogPost *blogger.Post `bson:"blogPost"`
+  Updated *time.Time `bson:"updated"`
 }
 
 type BlogPage struct {
   Id *bson.ObjectId `bson:"_id,omitempty"`
-  BlogPage *blogger.Page
-  Updated *time.Time
+  BlogPage *blogger.Page `bson:"blogPage"`
+  Updated *time.Time `bson:"updated"`
 }
 
 type Blog struct {
   Id *bson.ObjectId `bson:"_id,omitempty"`
-  Blog *blogger.Blog `bson:",omitempty"`
-  Updated *time.Time `bson:",omitempty"`
-  PostListEtag *string `bson:",omitempty"`
-  PostListUpdated *time.Time `bson:",omitempty"`
-  PageListEtag *string `bson:",omitempty"`
-  PageListUpdated *time.Time `bson:",omitempty"`
+  Blog *blogger.Blog `bson:"blog,omitempty"`
+  Updated *time.Time `bson:"updated,omitempty"`
+  PostListEtag *string `bson:"postListEtag,omitempty"`
+  PostListUpdated *time.Time `bson:"postListUpdated,omitempty"`
+  PageListEtag *string `bson:"pageListEtag,omitempty"`
+  PageListUpdated *time.Time `bson:"pageListUpdated,omitempty"`
 }
 
 type Tweet struct {
   Id *bson.ObjectId `bson:"_id,omitempty"`
-  Tweet *twitter.Tweet
-  OEmbed *twitter.OEmbedTweet
+  Tweet *twitter.Tweet `bson:"tweet"`
+  OEmbed *twitter.OEmbedTweet `bson:"oEmbed"`
 }
 
 type TwitterUser struct {
   Id *bson.ObjectId `bson:"_id,omitempty"`
-  TwitterUser *twitter.User
+  TwitterUser *twitter.User `bson:"twitterUser"`
 }
 
 func DefaultBlogStasher(db *mgo.Database) (m *BlogStasher) {
@@ -104,11 +104,14 @@ func WrapBlogPage(page *blogger.Page) *BlogPage {
 }
 func(m *BlogStasher) StashPage(ctx context.Context, page *blogger.Page) {
   dbPage := WrapBlogPage(page)
-  _, err := m.BlogPageCollection.Upsert(bson.M{"blogPage.id": page.Id, "updated": bson.M{"$lt": dbPage.Updated}}, &dbPage);
+  _, err := m.BlogPageCollection.Upsert(bson.M{"blogPage.id": page.Id}, &dbPage);
   if err != nil { panic(err) }
 }
 func(m *BlogStasher) StashPageEtags(ctx context.Context, blogId string, listEtag string, pageEtags map[string]string, newUpdated *time.Time) {
-  iter := m.BlogPageCollection.Find(nil).Select(bson.M{"dbPage.id": 1, "dbPage.etag": 1}).Select(bson.M{"_id": 1}).Iter()
+  iter := m.BlogPageCollection.
+      Find(nil).
+      Select(bson.M{"blogPage.id": 1, "blogPage.etag": 1}).
+      Iter()
   defer iter.Close()
   dbPage := new(BlogPage)
   for iter.Next(dbPage) {
@@ -122,7 +125,7 @@ func(m *BlogStasher) StashPageEtags(ctx context.Context, blogId string, listEtag
     panic(err)
   }
 
-  _, err := m.BlogCollection.Upsert(bson.M{"blog.id": blogId, "pageListUpdated": bson.M{"$lt": newUpdated}}, bson.M{"$set": &Blog{PageListEtag: &listEtag, PageListUpdated: newUpdated}})
+  _, err := m.BlogCollection.Upsert(bson.M{"blog.id": blogId}, bson.M{"$set": &Blog{PageListEtag: &listEtag, PageListUpdated: newUpdated}})
   if (err != nil) { panic(err) }
 }
 
@@ -155,11 +158,14 @@ func WrapBlogPost(post *blogger.Post) *BlogPost {
 }
 func(m *BlogStasher) StashPost(ctx context.Context, post *blogger.Post) {
   dbPost := WrapBlogPost(post)
-  _, err := m.BlogPostCollection.Upsert(bson.M{"blogPost.id": post.Id, "updated": bson.M{"$lt": dbPost.Updated}}, dbPost);
+  _, err := m.BlogPostCollection.Upsert(bson.M{"blogPost.id": post.Id}, dbPost);
   if err != nil { panic(err) }
 }
 func(m *BlogStasher) StashPostEtags(ctx context.Context, blogId string, listEtag string, postEtags map[string]string, newUpdated *time.Time) {
-  iter := m.BlogPostCollection.Find(nil).Select(bson.M{"dbPost.id": 1, "dbPost.etag": 1}).Select(bson.M{"_id": 1}).Iter()
+  iter := m.BlogPostCollection.
+      Find(nil).
+      Select(bson.M{"blogPost.id": 1, "blogPost.etag": 1}).
+      Iter()
   defer iter.Close()
   dbPost := new(BlogPost)
   for iter.Next(dbPost) {
@@ -173,7 +179,7 @@ func(m *BlogStasher) StashPostEtags(ctx context.Context, blogId string, listEtag
     panic(err)
   }
 
-  _, err := m.BlogCollection.Upsert(bson.M{"blog.id": blogId, "postListUpdated": bson.M{"$lt": newUpdated}}, bson.M{"$set": &Blog{PostListEtag: &listEtag, PostListUpdated: newUpdated}})
+  _, err := m.BlogCollection.Upsert(bson.M{"blog.id": blogId}, bson.M{"$set": &Blog{PostListEtag: &listEtag, PostListUpdated: newUpdated}})
   if (err != nil) { panic(err) }
 }
 
@@ -181,16 +187,16 @@ func(m *BlogStasher) StashBlog(ctx context.Context, blog *blogger.Blog) {
   dbBlog := Blog{
     Blog: blog,
   }
-  var err error
-  *dbBlog.Updated, err = time.Parse(time.RFC3339, blog.Updated)
+  updated, err := time.Parse(time.RFC3339, blog.Updated)
   if err != nil { panic(err) }
-  _, err = m.BlogCollection.Upsert(bson.M{"blog.id": blog.Id, "updated": bson.M{"$lt": dbBlog.Updated}}, bson.M{"$set": &dbBlog})
+  dbBlog.Updated = &updated
+  _, err = m.BlogCollection.Upsert(bson.M{"blog.id": blog.Id}, bson.M{"$set": &dbBlog})
   if (err != nil) { panic(err) }
 }
 
 func(m *TwitterStasher) GetLastTweetId(ctx context.Context, userId int64) int64 {
   tweet := new(Tweet)
-  err := m.TweetCollection.Find(bson.M{"tweet.user.id": userId}).Select(bson.M{"tweet.Id": 1}).One(tweet)
+  err := m.TweetCollection.Find(bson.M{"tweet.user.id": userId}).Select(bson.M{"tweet.id": 1}).One(tweet)
   if err != nil {
     if err == mgo.ErrNotFound {
       return 0
