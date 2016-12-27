@@ -29,19 +29,19 @@ type TwitterStasher struct {
 }
 
 type BlogPost struct {
-  Id *bson.ObjectId `bson:"_id,omitempty"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
   BlogPost *blogger.Post `bson:"blogPost"`
   Updated *time.Time `bson:"updated"`
 }
 
 type BlogPage struct {
-  Id *bson.ObjectId `bson:"_id,omitempty"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
   BlogPage *blogger.Page `bson:"blogPage"`
   Updated *time.Time `bson:"updated"`
 }
 
 type Blog struct {
-  Id *bson.ObjectId `bson:"_id,omitempty"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
   Blog *blogger.Blog `bson:"blog,omitempty"`
   Updated *time.Time `bson:"updated,omitempty"`
   PostListEtag *string `bson:"postListEtag,omitempty"`
@@ -51,13 +51,13 @@ type Blog struct {
 }
 
 type Tweet struct {
-  Id *bson.ObjectId `bson:"_id,omitempty"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
   Tweet *twitter.Tweet `bson:"tweet"`
   OEmbed *twitter.OEmbedTweet `bson:"oEmbed"`
 }
 
 type TwitterUser struct {
-  Id *bson.ObjectId `bson:"_id,omitempty"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
   TwitterUser *twitter.User `bson:"twitterUser"`
 }
 
