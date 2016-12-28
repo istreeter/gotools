@@ -29,21 +29,21 @@ type TwitterStasher struct {
 }
 
 type BlogPost struct {
-  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
-  BlogPost *blogger.Post `bson:"blogPost"`
-  Updated *time.Time `bson:"updated"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
+  BlogPost *blogger.Post `bson:"blogPost" json:"blogPost"`
+  Updated *time.Time `bson:"updated" json:"updated"`
 }
 
 type BlogPage struct {
-  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
-  BlogPage *blogger.Page `bson:"blogPage"`
-  Updated *time.Time `bson:"updated"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
+  BlogPage *blogger.Page `bson:"blogPage" json:"blogPage"`
+  Updated *time.Time `bson:"updated" json:"updated"`
 }
 
 type Blog struct {
-  Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
-  Blog *blogger.Blog `bson:"blog,omitempty"`
-  Updated *time.Time `bson:"updated,omitempty"`
+  Id *bson.ObjectId `bson:"_id,omitempty" json:"id,omitempty"`
+  Blog *blogger.Blog `bson:"blog,omitempty" json:"blog"`
+  Updated *time.Time `bson:"updated,omitempty" json:"updated"`
   PostListEtag *string `bson:"postListEtag,omitempty"`
   PostListUpdated *time.Time `bson:"postListUpdated,omitempty"`
   PageListEtag *string `bson:"pageListEtag,omitempty"`
