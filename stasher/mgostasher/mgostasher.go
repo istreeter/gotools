@@ -52,8 +52,8 @@ type Blog struct {
 
 type Tweet struct {
   Id *bson.ObjectId `bson:"_id,omitempty" json:",omitempty"`
-  Tweet *twitter.Tweet `bson:"tweet"`
-  OEmbed *twitter.OEmbedTweet `bson:"oEmbed"`
+  Tweet *twitter.Tweet `bson:"tweet" json:"tweet"`
+  OEmbed *twitter.OEmbedTweet `bson:"oEmbed" json:"oEmbed"`
 }
 
 type TwitterUser struct {
