@@ -206,7 +206,7 @@ func(m *TwitterStasher) GetLastTweetId(ctx context.Context, userId int64) int64 
   return tweet.Tweet.ID
 }
 
-func(m *TwitterStasher) EnsureTwitterIndexes(ctx context.Context) error {
+func(m *TwitterStasher) EnsureIndexes(ctx context.Context) error {
   var err error
 
   err = m.TwitterUserCollection.EnsureIndex(mgo.Index{
