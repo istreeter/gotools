@@ -206,6 +206,24 @@ func(m *TwitterStasher) GetLastTweetId(ctx context.Context, userId int64) int64 
   return tweet.Tweet.ID
 }
 
+func(m *TwitterStasher) EnsureTwitterIndexes(ctx context.Context) {
+  var err error
+
+  err = m.TwitterUserCollection.EnsureIndex(mgo.Index{
+    Key: []string{"user.id"},
+    Unique: true,
+    DropDups: true,
+  });
+  if err != nil { panic(err) }
+
+  err = m.TweetCollection.EnsureIndex(mgo.Index{
+    Key: []string{"tweet.id"},
+    Unique: true,
+    DropDups: true,
+  });
+  if err != nil { panic(err) }
+}
+
 func(m *TwitterStasher) StashUser(ctx context.Context, user *twitter.User) {
   dbUser := &TwitterUser{TwitterUser: user}
   _, err := m.TwitterUserCollection.Upsert(bson.M{"user.id": user.ID}, &dbUser);
