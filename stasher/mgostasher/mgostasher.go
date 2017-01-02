@@ -206,7 +206,7 @@ func(m *TwitterStasher) GetLastTweetId(ctx context.Context, userId int64) int64 
   return tweet.Tweet.ID
 }
 
-func(m *TwitterStasher) EnsureTwitterIndexes(ctx context.Context) {
+func(m *TwitterStasher) EnsureTwitterIndexes(ctx context.Context) error {
   var err error
 
   err = m.TwitterUserCollection.EnsureIndex(mgo.Index{
@@ -214,14 +214,16 @@ func(m *TwitterStasher) EnsureTwitterIndexes(ctx context.Context) {
     Unique: true,
     DropDups: true,
   });
-  if err != nil { panic(err) }
+  if err != nil { return err }
 
   err = m.TweetCollection.EnsureIndex(mgo.Index{
     Key: []string{"tweet.id"},
     Unique: true,
     DropDups: true,
   });
-  if err != nil { panic(err) }
+  if err != nil { return err }
+
+  return nil
 }
 
 func(m *TwitterStasher) StashUser(ctx context.Context, user *twitter.User) {
