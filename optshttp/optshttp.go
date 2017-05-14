@@ -7,7 +7,6 @@ import (
   "fmt"
   "strconv"
   "reflect"
-  "unsafe"
   "strings"
 )
 
@@ -68,11 +67,7 @@ func unmarshalStruct(v reflect.Value, tagKey string, varLookup func(string) stri
   return nil
 }
 
-var pStrType = reflect.TypeOf((*string)(nil))
-var pIntType = reflect.TypeOf((*int)(nil))
-var pUintType = reflect.TypeOf((*uint)(nil))
 var timeType = reflect.TypeOf(time.Time{})
-var pTimeType = reflect.PtrTo(timeType)
 
 func setValue(v reflect.Value, formKey string, formStr string) error {
   switch v.Kind() {
@@ -92,41 +87,17 @@ func setValue(v reflect.Value, formKey string, formStr string) error {
       }
     case reflect.Struct:
       if v.Type() == timeType {
-        t := (*time.Time)(unsafe.Pointer(v.UnsafeAddr()))
+        t := &time.Time{}
         if err := t.UnmarshalText([]byte(formStr)); err != nil {
           return &optsError{"time in RFC3339 format", formKey, formStr}     
         }
+        v.Set(reflect.ValueOf(*t))
       }
     case reflect.Ptr:
-      if ! v.IsNil() {
-        return setValue(v.Elem(), formKey, formStr)
+      if v.IsNil() {
+          v.Set(reflect.New(v.Type().Elem()))
       }
-      switch v.Type() {
-        case pStrType:
-          p := (**string)(unsafe.Pointer(v.UnsafeAddr()))
-          *p = &formStr
-        case pIntType:
-          if val, err := strconv.Atoi(formStr); err != nil{
-            return &optsError{"integer", formKey, formStr}     
-          } else {
-            p := (**int)(unsafe.Pointer(v.UnsafeAddr()))
-            *p = &val
-          }
-        case pUintType:
-          if val, err := strconv.ParseUint(formStr, 10, 0); err != nil{
-            return &optsError{"unsigned integer", formKey, formStr}     
-          } else {
-            p := (**uint64)(unsafe.Pointer(v.UnsafeAddr()))
-            *p = &val
-          }
-        case pTimeType:
-          if val, err := time.Parse(time.RFC3339Nano, formStr); err != nil{
-            return &optsError{"time in RFC3339 format", formKey, formStr}     
-          } else {
-            p := (**time.Time)(unsafe.Pointer(v.UnsafeAddr()))
-            *p = &val
-          }
-      }
+      return setValue(v.Elem(), formKey, formStr)
   }
   return nil
 }
