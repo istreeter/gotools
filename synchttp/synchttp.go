@@ -4,7 +4,6 @@ import (
   "net/http"
   "time"
   "sync"
-  "context"
 )
 
 type Handlers []http.Handler
@@ -51,23 +50,9 @@ type CtxDoneHandler struct {
   H http.Handler
 }
 
-func (t CtxDoneHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-  if ch := req.Context().Done(); ch != nil {
-    <- ch
-    t.H.ServeHTTP(w, req)
-  }
-}
-
 type TimedContextHandler struct {
   H http.Handler
   Dt time.Duration
-}
-
-func (t *TimedContextHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-  ctx, cancel := context.WithTimeout(req.Context(), t.Dt)
-  defer cancel()
-  req = req.WithContext(ctx)
-  t.H.ServeHTTP(w, req)
 }
 
 type RecoveryHandler struct {
