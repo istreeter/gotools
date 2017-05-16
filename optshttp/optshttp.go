@@ -40,10 +40,7 @@ func unmarshalStruct(v reflect.Value, tagKey string, varLookup func(string) stri
   numField := vt.NumField()
   for i := 0; i < numField; i++ {
     field := vt.Field(i)
-    if tagStr, ok := field.Tag.Lookup(tagKey); ok {
-      if (len(tagStr) == 0) {
-        continue
-      }
+    if tagStr := field.Tag.Get(tagKey); len(tagStr) != 0 {
       tagFields := strings.Split(tagStr, ",")
       if len(tagFields) > 1 {
         for _, flag := range tagFields[1:] {
