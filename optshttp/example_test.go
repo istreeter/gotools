@@ -20,9 +20,11 @@ func ExampleUnmarshalForm() {
     PInt  *uint       `form:"int_b"`
     Date  time.Time  `form:"date_a"`
     PDate *time.Time `form:"date_b"`
+    Month time.Month  `form:"month_a"`
+    PMonth *time.Month  `form:"month_b"`
   }
 
-  url := `http://example.com/?str_a=foo&str_b=bar&int_a=100&int_b=200&date_a=1985-10-26T01:21:00Z&date_b=1834-08-01T12:00:00Z`
+  url := `http://example.com/?str_a=foo&str_b=bar&int_a=100&int_b=200&date_a=1985-10-26T01:21:00Z&date_b=1834-08-01T12:00:00Z&month_a=3&month_b=6`
   req, _ := http.NewRequest("GET", url, nil)
 
   params := &tParams{}
@@ -36,6 +38,8 @@ func ExampleUnmarshalForm() {
   fmt.Println("PInt is:", *params.PInt)
   fmt.Println("Date is:", params.Date)
   fmt.Println("PDate is:", *params.PDate)
+  fmt.Println("Month is:", params.Month.String())
+  fmt.Println("PMonth is:", params.PMonth.String())
 
   // Output:
   // Str is: foo
@@ -44,6 +48,8 @@ func ExampleUnmarshalForm() {
   // PInt is: 200
   // Date is: 1985-10-26 01:21:00 +0000 UTC
   // PDate is: 1834-08-01 12:00:00 +0000 UTC
+  // Month is: March
+  // PMonth is: June
 }
 
 func ExampleUnmarshalPath() {

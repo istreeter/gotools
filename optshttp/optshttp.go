@@ -65,23 +65,29 @@ func unmarshalStruct(v reflect.Value, tagKey string, varLookup func(string) stri
 }
 
 var timeType = reflect.TypeOf(time.Time{})
+var monthType = reflect.TypeOf(time.Month(1))
 
 func setValue(v reflect.Value, formKey string, formStr string) error {
   switch v.Kind() {
     case reflect.String:
       v.SetString(formStr)
     case reflect.Int:
-      if val, err := strconv.ParseInt(formStr, 10, 0); err != nil{
+      val, err := strconv.ParseInt(formStr, 10, 0)
+      if  err != nil{
         return &optsError{"integer", formKey, formStr}     
-      } else {
-        v.SetInt(val)
       }
+      if v.Type() == monthType {
+        if val < 0 || val > 12 {
+          return &optsError{"date", formKey, formStr}     
+        }
+      }
+      v.SetInt(val)
     case reflect.Uint:
-      if val, err := strconv.ParseUint(formStr, 10, 0); err != nil{
+      val, err := strconv.ParseUint(formStr, 10, 0)
+      if err != nil{
         return &optsError{"unsigned integer", formKey, formStr}     
-      } else {
-        v.SetUint(val)
       }
+      v.SetUint(val)
     case reflect.Struct:
       if v.Type() == timeType {
         t := &time.Time{}

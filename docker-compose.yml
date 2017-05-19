@@ -1,9 +1,9 @@
 version: '2'
 
 services:
-  gotools_build:
-    image: golang
+  go:
+    image: golang:1.6
     volumes:
       - $PWD:/go/src/github.com/istreeter/gotools
       - $HOME/go:/go
-    command: go test github.com/istreeter/gotools/stasher
+    command: go test github.com/istreeter/gotools/optshttp
