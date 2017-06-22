@@ -18,7 +18,7 @@ func ExampleNewErrorHandler() {
   errorHandler.ServeHTTP(w, req)
   fmt.Printf("%d - %s - %s", w.Code, w.HeaderMap["Content-Type"], w.Body.String())
 
-  // Output: 400 - [application/json; charset=UTF-8] - {"error":true,"message":"You made an error"}
+  // Output: 400 - [application/json; charset=UTF-8] - {"error":true,"message":"You made an error","name":"Bad Request"}
 }
 
 func ExampleError() {
@@ -32,7 +32,7 @@ func ExampleError() {
   handler(w, req)
   fmt.Printf("%d - %s - %s", w.Code, w.HeaderMap["Content-Type"], w.Body.String())
 
-  // Output: 400 - [application/json; charset=UTF-8] - {"error":true,"message":"You made an error"}
+  // Output: 400 - [application/json; charset=UTF-8] - {"error":true,"message":"You made an error","name":"Bad Request"}
 }
 
 func ExampleOK() {
@@ -84,6 +84,6 @@ func ExampleHandleWithMsgs() {
 
   // Output:
   // First response: 200 - [application/json; charset=UTF-8] - {"errors":0,"ok":true,"status":"good"}
-  // Second response: 503 - [application/json; charset=UTF-8] - {"error":true,"message":"Server Timeout"}
-  // Third response: 500 - [application/json; charset=UTF-8] - {"error":true,"message":"Server Error"}
+  // Second response: 503 - [application/json; charset=UTF-8] - {"error":true,"message":"Server Timeout","name":"Service Unavailable"}
+  // Third response: 500 - [application/json; charset=UTF-8] - {"error":true,"message":"Server Error","name":"Internal Server Error"}
 }

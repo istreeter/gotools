@@ -2,8 +2,8 @@ version: '2'
 
 services:
   go:
-    image: golang:1.6
+    image: golang:1.7.3
     volumes:
       - $PWD:/go/src/github.com/istreeter/gotools
       - $HOME/go:/go
-    command: go test github.com/istreeter/gotools/optshttp
+    command: go test github.com/istreeter/gotools/jsonhttp

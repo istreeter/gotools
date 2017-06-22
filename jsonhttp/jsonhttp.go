@@ -21,7 +21,7 @@ func (h *errorHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func NewErrorHandler(message string, code int) http.Handler {
-  jsonContent, err := json.Marshal(&errorResponse{Error: true, Message: message})
+  jsonContent, err := json.Marshal(&errorResponse{Error: true, Message: message, Name: http.StatusText(code)})
   if err != nil {
     panic(err)
   }
@@ -32,10 +32,11 @@ func NewErrorHandler(message string, code int) http.Handler {
 type errorResponse struct{
   Error bool `json:"error"`
   Message string `json:"message"`
+  Name string    `json:"name"`
 }
 
 func Error(w http.ResponseWriter, message string, code int) {
-  res := &errorResponse{Error: true, Message: message}
+  res := &errorResponse{Error: true, Message: message, Name: http.StatusText(code)}
   write(w, res, code)
 }
 
